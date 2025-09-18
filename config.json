@@ -1,0 +1,16 @@
+{
+  "title": "マブラヴ・ガールズガーデンX",
+  "templates_dir": "C:\\Users\\Alice\\Desktop\\MazeBot_kit\\templates",
+  "thr_main": 0.74975,
+  "thr_tag": 0.77,
+  "thr_skip_color": 0.6397999999999999,
+  "sleep_base": 0.02998,
+  "sleep_fast": 0.01796,
+  "route_left_ratio": 0.5099,
+  "event_priority": "event_boss,event_risky,event_battle,event_support,event_shop,event_event,event_unknown",
+  "hotkey_start": "f4",
+  "hotkey_stop": "f3",
+  "debug": true,
+  "low_power": false,
+  "window_title": ""
+}
