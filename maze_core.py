@@ -50,7 +50,7 @@ class MazeBot:
         self._tpl_gray: Dict[str, np.ndarray] = {}
         self._tpl_color: Dict[str, np.ndarray] = {}
 
-        pyautogui.FAILSAFE = False  # 禁用角落 fail-safe
+        pyautogui.FAILSAFE = False  # Disable corner fail-safe
 
         self._update_runtime_params()
         self._load_templates()
@@ -58,17 +58,17 @@ class MazeBot:
     # ---------- params ----------
     def _update_runtime_params(self):
         p = self._param_provider() or {}
-        # 阈值
+        # Thresholds
         self.thr_main = float(p.get("thr_main", 0.76))
         self.thr_tag = float(p.get("thr_tag", 0.77))
         self.thr_skip_color = float(p.get("thr_skip_color", 0.64))
-        # 时序（已经是秒）
+        # Timing (already in seconds)
         self.sleep_base = max(0.006, float(p.get("sleep_base", 0.03)))
         self.sleep_fast = max(0.006, float(p.get("sleep_fast", 0.02)))
-        # 左侧可选区宽度
+        # Width of selectable area on the left
         self.route_left_ratio = clamp01(float(p.get("route_left_ratio", 0.56)))
 
-        # 事件优先级（可配置）
+        # Event priority (configurable)
         default_priority = "event_boss,event_risky,event_battle,event_support,event_shop,event_event,event_unknown"
         raw = p.get("event_priority", default_priority)
         if isinstance(raw, str):
@@ -93,7 +93,7 @@ class MazeBot:
             if raw is None:
                 continue
 
-            # COLOR: 统一到 BGR 8U 三通道
+            # COLOR: normalize to BGR 8U three channels
             if raw.ndim == 3 and raw.shape[2] == 4:
                 color = cv2.cvtColor(raw, cv2.COLOR_BGRA2BGR)
             elif raw.ndim == 3 and raw.shape[2] == 3:
@@ -101,7 +101,7 @@ class MazeBot:
             else:
                 color = cv2.cvtColor(raw, cv2.COLOR_GRAY2BGR)
 
-            # GRAY: 单通道 8U
+            # GRAY: single channel 8U
             if raw.ndim == 3 and raw.shape[2] == 4:
                 gray = cv2.cvtColor(raw, cv2.COLOR_BGRA2GRAY)
             elif raw.ndim == 3 and raw.shape[2] == 3:
@@ -143,7 +143,7 @@ class MazeBot:
         b = self._bbox
         with mss() as sct:
             shot = sct.grab({"left": b["left"], "top": b["top"], "width": b["width"], "height": b["height"]})
-        img = np.array(shot)[:, :, :3]  # BGRA → BGR
+        img = np.array(shot)[:, :, :3]  # BGRA -> BGR
         return img, b
 
     # ---------- roi / click ----------
@@ -231,7 +231,7 @@ class MazeBot:
         self._ensure_window()
         self._update_runtime_params()
 
-        # 预热常用模板
+        # Preload frequently used templates
         for k in [
             "btn_explore", "btn_explore_confirm", "tag_select", "btn_shop_skip",
             "title_route", "btn_route_confirm",
@@ -313,26 +313,26 @@ class Init_State(State_Base):
 
         while not b._stop:
             if self.heartbeat():
-                # 超时回到路线选择，避免空转
+                # On timeout return to route selection to avoid idling
                 return Route_Selection_State(b)
 
             scr, _ = b._grab()
 
-            # 在“准备/编队页”
+            # On the Prepare/Formation screen
             if (b._match_gray(scr, "btn_explore", b.thr_main) or
                 b._match_gray(scr, "btn_explore_confirm", b.thr_main) or
                 b._match_color(scr, "btn_explore_confirm", b.thr_main) or
                 b._match_gray(scr, "tag_select", b.thr_tag)):
                 return Prepare_State(b)
 
-            # 右下 next 兜底点一下（例如奖励弹窗后）
+            # Fallback: click bottom-right Next (e.g. after reward popup)
             nxt = b._match_gray(scr, "btn_next", b.thr_main)
             if nxt:
                 b.click_abs(nxt.center)
                 time.sleep(b.sleep_fast * 1.1)
                 continue
 
-            # 已在各页的直接跳转
+            # Direct jumps handled per screen already
             if b._match_gray(scr, "title_route", b.thr_tag):
                 return Route_Selection_State(b)
             if b._match_gray(scr, "btn_route_confirm", b.thr_main):
@@ -340,7 +340,7 @@ class Init_State(State_Base):
             if b._match_gray(scr, "btn_battle_skip", b.thr_main):
                 return Battle_State(b)
             if b._match_gray(scr, "title_relic", b.thr_tag):
-                # 修复：类名应为 Relic_Selection_State
+                # Fix: class name should be Relic_Selection_State
                 return Relic_Selection_State(b)
 
             time.sleep(b.sleep_fast)
@@ -362,7 +362,7 @@ class Prepare_State(State_Base):
 
             scr, _ = b._grab()
 
-            # 先点“选择/探索开始”
+            # Click Select/Begin exploration first
             if not clicked_explore:
                 hit = (b._match_gray(scr, "btn_explore", b.thr_main) or
                        b._match_color(scr, "btn_explore", b.thr_main))
@@ -372,11 +372,11 @@ class Prepare_State(State_Base):
                     time.sleep(b.sleep_base)
                     continue
 
-            # 再点“确认”
+            # Then click Confirm
             ok = (b._match_gray(scr, "btn_explore_confirm", b.thr_main) or
                   b._match_color(scr, "btn_explore_confirm", b.thr_main))
             if not ok:
-                # 右下兜底 ROI
+                # Fallback ROI at bottom right
                 ok = b._match_roi(scr, "btn_explore_confirm", b.thr_main, (0.65, 0.80, 0.98, 0.98), use_color=True)
 
             if ok:
@@ -397,12 +397,11 @@ class Route_Selection_State(State_Base):
 
     def _try_match(self, scr, key, roi, thr):
         b = self.bot
-        # 先灰度，再彩色兜底，谁先命中用谁
+        # Try grayscale before color fallback; use whichever hits first
         return (b._match_roi(scr, key, thr, roi) or
                 b._match_roi(scr, key, thr, roi, use_color=True))
 
     def _collect_eligible(self, scr, roi):
-        """按严格阈值 thr_main 收集‘可以真正点击的候选’"""
         b = self.bot
         ok = []
         for name in b.event_priority:
@@ -412,7 +411,6 @@ class Route_Selection_State(State_Base):
         return ok
 
     def _scan_debug_hits(self, scr, roi):
-        """宽松阈值，仅用于‘能看到什么’的调试输出"""
         b = self.bot
         keys = ("event_boss","event_risky","event_battle","event_support",
                 "event_shop","event_event","event_unknown")
@@ -427,16 +425,15 @@ class Route_Selection_State(State_Base):
         return hits[:8]
 
     def _pick(self, scr):
-        """真正用于选择：按优先级 + 严格阈值，必要时扩大 ROI 回退一次"""
         b = self.bot
         left = max(0.05, min(0.75, b.route_left_ratio))
         roi1 = (0.05, 0.18, left, 0.86)
-        # 第一轮：常规 ROI
+        # Pass 1: standard ROI
         for name in b.event_priority:
             r = self._try_match(scr, name, roi1, b.thr_main)
             if r:
                 return r.center, name, roi1
-        # 第二轮：扩大 ROI 兜底
+        # Pass 2: enlarged ROI fallback
         roi2 = (0.02, 0.12, min(0.78, left + 0.12), 0.90)
         for name in b.event_priority:
             r = self._try_match(scr, name, roi2, b.thr_main - 0.02)
@@ -460,7 +457,7 @@ class Route_Selection_State(State_Base):
             on_route = title_r is not None
 
             if not on_route:
-                # 非路线页的去向判定（略）
+                # Skip destination checks for non-route screens
                 if b._match_gray(scr, "btn_battle_skip", b.thr_main):
                     return Battle_State(b)
                 if b._match_gray(scr, "title_relic", b.thr_tag):
@@ -469,16 +466,16 @@ class Route_Selection_State(State_Base):
                     return Route_Confirmation_State(b)
                 return Init_State(b)
 
-            # 在路线页：调试输出
+            # On the route screen: emit debug output
             left = max(0.05, min(0.75, b.route_left_ratio))
             roi = (0.05, 0.18, left, 0.86)
             if b.debug and time.time() - dbg_last > 0.7:
                 b.log(f"[ROUTE/DBG] title_route={title_r.maxv:.2f} | roi={roi} | left_ratio={left:.2f}")
                 b.log(f"[ROUTE/DBG] priority={b.event_priority}")
-                # ‘能看到什么’（宽松阈值）
+                # What is visible (loose threshold)
                 for kk, vv, cc in self._scan_debug_hits(scr, roi):
                     b.log(f"[ROUTE/DBG] seen {kk:>12s} v={vv:.2f} @ {cc}")
-                # ‘真正可选的有哪些’（严格阈值）
+                # Which options are actually selectable (strict threshold)
                 elig = self._collect_eligible(scr, roi)
                 if elig:
                     txt = ", ".join([f"{k}:{v:.2f}@{c}" for k, v, c in elig])
@@ -508,7 +505,7 @@ class Route_Confirmation_State(State_Base):
     def __init__(self, bot: MazeBot, after: list[type["State_Base"]] | None = None,
                  battle_cls: type[State_Base] | None = None):
         super().__init__(bot, after)
-        # 修复：默认值不能在函数签名里前向引用未定义类
+        # Fix: default cannot forward reference undefined class in signature
         from typing import cast
         self.battle_cls = cast(type[State_Base], battle_cls) if battle_cls else Battle_State
 
@@ -548,7 +545,7 @@ class Battle_State(State_Base):
     SPAM_X_ANCHOR = 0.94
     SPAM_Y_ANCHORS = (0.10, 0.112, 0.113)
 
-    # 遗物选完之后要走的链（普通战：直接回路线）
+    # Post-relic chain to follow (normal battle: go back to route)
     POST_CHAIN = [Route_Selection_State]
 
     def run(self):
@@ -566,7 +563,7 @@ class Battle_State(State_Base):
             if nxt:
                 b.click_abs(nxt.center)
                 time.sleep(b.sleep_fast)
-                # 进入遗物，并携带“战后链”
+                # Enter relic selection carrying the post-battle chain
                 return Relic_Selection_State(b, after=list(self.POST_CHAIN))
 
             sk = (b._match_roi(scr, "btn_battle_skip", max(0.30, b.thr_skip_color - 0.08), self.ROI_SKIP, use_color=True)
@@ -592,7 +589,7 @@ class Battle_State(State_Base):
 
 class Boss_Battle_State(Battle_State):
     NAME = "Boss_Battle"
-    # 注意：POST_CHAIN 在所有类定义完后再赋值，避免前向引用错误
+    # Note: assign POST_CHAIN after all classes are defined to avoid forward-reference errors
     POST_CHAIN: List[type[State_Base]] = []
 
 
@@ -623,10 +620,10 @@ class Relic_Selection_State(State_Base):
 
             scr, _ = b._grab()
 
-            # 若看到路线标题，说明遗物页已经结束（普通战）
+            # Seeing the route title means the relic page is finished (normal battle)
             if b._match_gray(scr, "title_route", b.thr_tag):
                 return Route_Selection_State(b)
-            # 若又出现了 Skip，则回到了战斗
+            # If Skip reappears we are back in battle
             if b._match_gray(scr, "btn_battle_skip", b.thr_main):
                 return Battle_State(b)
 
@@ -634,7 +631,7 @@ class Relic_Selection_State(State_Base):
                 time.sleep(b.sleep_fast)
                 continue
 
-            # 1) 优先点带“钻石”的那张
+            # 1) Prefer the card with the diamond marker
             hit_d = b._match_roi(scr, self.DIAMOND_TPL,
                                  max(b.thr_tag, 0.70), self.ROI_DIAMOND, use_color=True)
             if hit_d:
@@ -647,7 +644,7 @@ class Relic_Selection_State(State_Base):
                     return self.next_from_chain()
                 continue
 
-            # 2) 没有钻石就点最左
+            # 2) Otherwise click the leftmost card
             pt = self._abs_from_rel(*self.CARD_CENTERS_REL[0])
             b.log(f"[RELIC] click default left @ {pt}")
             b.click_abs(pt)
@@ -664,7 +661,7 @@ class Relic_Selection_State(State_Base):
 class _BaseSkipBottomRight(State_Base):
     NAME = "SKIP"
     TIMEOUT_SECS = 10
-    ROI_SKIP_BTN = (0.72, 0.82, 0.98, 0.98)  # 右下角按钮区域
+    ROI_SKIP_BTN = (0.72, 0.82, 0.98, 0.98)  # Bottom-right button region
 
     def run(self) -> "State_Base":
         
@@ -676,7 +673,7 @@ class _BaseSkipBottomRight(State_Base):
                 return Init_State(b)
             scr, _ = b._grab()
 
-            # 有明确的“继续/离开/购买后返回”按钮
+            # If a clear Continue/Leave/Return after purchase button exists
             hit = (b._match_roi(scr, "btn_shop_skip", b.thr_main, self.ROI_SKIP_BTN, use_color=True)
                    or b._match_roi(scr, "btn_next", b.thr_main - 0.08, self.ROI_SKIP_BTN))
             if hit:
@@ -684,11 +681,11 @@ class _BaseSkipBottomRight(State_Base):
                 time.sleep(b.sleep_fast * 1.1)
                 return self.next_from_chain()
 
-            # 兜底：直接点 ROI 中心一次
+            # Fallback: click the ROI center once
             L, T, R, B = b._roi_abs(self.ROI_SKIP_BTN)
             b.click_abs(((L + R) // 2, (T + B) // 2))
             time.sleep(b.sleep_fast)
-        return self.next_from_chain()  # 超时也继续
+        return self.next_from_chain()  # Continue even on timeout
 
 class Shop_State(_BaseSkipBottomRight):
     NAME = "Shop"
@@ -697,5 +694,5 @@ class Support_State(_BaseSkipBottomRight):
     NAME = "Support"
 
 
-# ---- 在所有类定义完成后，补上 Boss 的战后链，避免前向引用 NameError ----
+# ---- After all class definitions, fill in the boss post-battle chain to avoid forward-reference NameError ----
 Boss_Battle_State.POST_CHAIN = [Shop_State, Support_State, Route_Selection_State]

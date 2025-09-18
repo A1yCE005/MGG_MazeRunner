@@ -4,7 +4,7 @@ import sys
 import json
 import threading
 import traceback
-import time  # 新增
+import time  # Added
 
 
 from PySide6.QtCore import Qt, Signal
@@ -51,7 +51,7 @@ def _save_config(cfg: dict):
     except Exception:
         pass
 
-# ---------- 方法A：窗口选择器 ----------
+# ---------- Method A: Window picker ----------
 class WindowPickerDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -105,7 +105,7 @@ class WindowPickerDialog(QDialog):
         it = self.listw.currentItem()
         return it.text().strip() if it else ""
 
-# ---------- 热键录制输入框 ----------
+# ---------- Hotkey capture input ----------
 class KeyCaptureLineEdit(QLineEdit):
     keyChanged = Signal(str)
 
@@ -178,14 +178,14 @@ class KeyCaptureLineEdit(QLineEdit):
         self.keyChanged.emit(combo)
         self.clearFocus()
 
-# ---------- 主窗口 ----------
+# ---------- Main window ----------
 class BotWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Maze Runner Bot")
-        self.resize(980, 640)  # 稍小一些
+        self.resize(980, 640)  # Slightly smaller
 
-        # 统一字体
+        # Unified font
         fam = self._pick_font_family()
         app_font = QFont(fam, 11)
         QApplication.instance().setFont(app_font)
@@ -305,11 +305,11 @@ class BotWindow(QMainWindow):
         row_btn.addWidget(self.btn_start)
         row_btn.addWidget(self.btn_stop)
 
-        # >>> 新增：导出日志按钮
+        # >>> Added: export log button
         self.btn_export = QPushButton("导出日志…")
         self.btn_export.clicked.connect(self._on_export_logs)
         row_btn.addWidget(self.btn_export)
-        # <<< 新增结束
+        # <<< End of addition
 
         main.addLayout(row_btn)
 
@@ -378,7 +378,7 @@ class BotWindow(QMainWindow):
 
         main.addStretch(1)
 
-    # ---------- 配置项回调 ----------
+    # ---------- Config callbacks ----------
     def _pick_window(self):
         dlg = WindowPickerDialog(self)
         if dlg.exec():
@@ -415,7 +415,7 @@ class BotWindow(QMainWindow):
             cfg["sleep_fast"] = float(cfg.get("sleep_fast", 0.02)) * 1.5
         return cfg
 
-    # ---------- 启停 ----------
+    # ---------- Start & stop ----------
     def _on_click_start(self):
         if self._running:
             return
@@ -451,7 +451,7 @@ class BotWindow(QMainWindow):
         )
         self.bot.start()
 
-        # 只进一次 loop，内部自循环
+        # Only enter one loop; the rest is internal
         self.bot_thread = threading.Thread(target=self._run_loop_once, daemon=True)
         self.bot_thread.start()
         self._running = True
@@ -463,7 +463,7 @@ class BotWindow(QMainWindow):
             self.log(f"[ERR] {e}\n{traceback.format_exc()}")
             self._running = False
 
-    # ---------- 日志 & 热键 ----------
+    # ---------- Logs & hotkeys ----------
     def log(self, s: str):
         self.log_view.append(s)
         self.log_view.verticalScrollBar().setValue(self.log_view.verticalScrollBar().maximum())
